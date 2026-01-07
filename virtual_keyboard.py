@@ -9,17 +9,20 @@ mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(max_num_hands=1)
 mp_draw = mp.solutions.drawing_utils
 
+# Keyboard layout (CAPS added)
 keys = [
     ["Q","W","E","R","T","Y","U","I","O","P"],
     ["A","S","D","F","G","H","J","K","L","ENTER"],
     ["Z","X","C","V","B","N","M","BACK","SHIFT"],
-    ["SPACE"]
+    ["CAPS","SPACE"]
 ]
 
 final_text = ""
 last_press_time = 0
 press_delay = 0.7
+
 shift_on = False
+caps_on = False
 
 def distance(x1, y1, x2, y2):
     return math.hypot(x2 - x1, y2 - y1)
@@ -34,7 +37,7 @@ while True:
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(rgb)
 
-    # 🔹 AUTO SCALE
+    # Auto-scale keyboard
     max_keys = 10
     key_w = w // (max_keys + 2)
     key_h = key_w
@@ -45,9 +48,13 @@ while True:
         for i, row in enumerate(keys):
             for j, key in enumerate(row):
                 if key == "SPACE":
+                    x = start_x + key_w
+                    y = start_y + i * key_h
+                    width = key_w * 4
+                elif key == "CAPS":
                     x = start_x
                     y = start_y + i * key_h
-                    width = key_w * 5
+                    width = key_w
                 else:
                     x = start_x + j * key_w
                     y = start_y + i * key_h
@@ -56,9 +63,11 @@ while True:
                 color = (255, 0, 255)
                 if key == "SHIFT" and shift_on:
                     color = (0, 255, 0)
+                if key == "CAPS" and caps_on:
+                    color = (255, 255, 0)
 
                 cv2.rectangle(frame, (x, y), (x + width, y + key_h), color, 2)
-                cv2.putText(frame, key, (x + 8, y + int(key_h * 0.7)),
+                cv2.putText(frame, key, (x + 5, y + int(key_h * 0.7)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5,
                             (255, 255, 255), 1)
 
@@ -66,9 +75,13 @@ while True:
         for i, row in enumerate(keys):
             for j, key in enumerate(row):
                 if key == "SPACE":
+                    x = start_x + key_w
+                    y = start_y + i * key_h
+                    width = key_w * 4
+                elif key == "CAPS":
                     x = start_x
                     y = start_y + i * key_h
-                    width = key_w * 5
+                    width = key_w
                 else:
                     x = start_x + j * key_w
                     y = start_y + i * key_h
@@ -100,16 +113,21 @@ while True:
                 elif key == "ENTER":
                     final_text += "\n"
                 elif key == "SHIFT":
-                    shift_on = not shift_on
+                    shift_on = True
+                elif key == "CAPS":
+                    caps_on = not caps_on
                 else:
-                    final_text += key.upper() if shift_on else key.lower()
+                    if shift_on or caps_on:
+                        final_text += key.upper()
+                    else:
+                        final_text += key.lower()
                     shift_on = False
 
                 last_press_time = current_time
 
             mp_draw.draw_landmarks(frame, hand, mp_hands.HAND_CONNECTIONS)
 
-    # 🔹 TEXT BOX (SAFE)
+    # Text box
     cv2.rectangle(frame, (20, 20), (w - 20, 110), (0, 255, 255), 2)
     y_text = 60
     for line in final_text.split("\n")[-2:]:
@@ -118,10 +136,16 @@ while True:
                     (255, 255, 255), 2)
         y_text += 30
 
+    # Status indicators
     cv2.putText(frame, f"SHIFT: {'ON' if shift_on else 'OFF'}",
-                (w - 160, 140),
+                (w - 200, 140),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                 (0, 255, 0) if shift_on else (0, 0, 255), 2)
+
+    cv2.putText(frame, f"CAPS: {'ON' if caps_on else 'OFF'}",
+                (w - 200, 165),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                (255, 255, 0) if caps_on else (0, 0, 255), 2)
 
     cv2.imshow("Virtual Keyboard - Hand Gesture", frame)
 
